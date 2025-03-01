@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Submission</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js"></script>
+</head>
+<body>
+    <header id="headerContainerTS"></header>
+    <div class="container">
+        <h1>Submit Your Details</h1>
+        <button id="loginBtn">Login with Google</button>
+        <p id="userGreeting"></p>
+        <form id="submissionForm">
+            <input type="text" id="name" placeholder="First Name" required>
+            <input type="text" id="lname" placeholder="Last Name" required>
+            <textarea id="message" placeholder="Message" required></textarea>
+            <input type="file" id="fileUpload">
+            <button type="submit">Submit</button>
+        </form>
+        <h2>Customer Submissions</h2>
+        <ul id="customerList"></ul>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDCE-pEsnIN3K1xsdI2XkcuYIidDwSYf0U",
+            authDomain: "logins-d09d1.firebaseapp.com",
+            databaseURL: "https://logins-d09d1-default-rtdb.firebaseio.com",
+            projectId: "logins-d09d1",
+            storageBucket: "logins-d09d1.firebasestorage.app",
+            messagingSenderId: "297388775367",
+            appId: "1:297388775367:web:1e99b2e20d912612fa2be2"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        const storage = firebase.storage();
+
+        document.getElementById("loginBtn").addEventListener("click", () => {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            auth.signInWithPopup(provider).then(result => {
+                document.getElementById("userGreeting").innerText = `Welcome, ${result.user.displayName}`;
+            }).catch(error => console.error(error));
+        });
+
+        document.getElementById("submissionForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const name = document.getElementById("name").value;
+            const lname = document.getElementById("lname").value;
+            const message = document.getElementById("message").value;
+            const file = document.getElementById("fileUpload").files[0];
+            let fileURL = "";
+
+            if (file) {
+                const storageRef = storage.ref(`uploads/${file.name}`);
+                await storageRef.put(file);
+                fileURL = await storageRef.getDownloadURL();
+            }
+
+            await db.collection("submissions").add({ name, lname, message, fileURL, date: new Date() });
+            alert("Submission Successful");
+            fetchSubmissions();
+        });
+
+        async function fetchSubmissions() {
+            const querySnapshot = await db.collection("submissions").get();
+            const customerList = document.getElementById("customerList");
+            customerList.innerHTML = "";
+            querySnapshot.forEach(doc => {
+                const data = doc.data();
+                const li = document.createElement("li");
+                li.innerHTML = `${data.name} ${data.lname} - ${data.message} - <a href="${data.fileURL}" target="_blank">File</a> - ${new Date(data.date.seconds * 1000).toLocaleDateString()}`;
+                customerList.appendChild(li);
+            });
+        }
+    </script>
+</body>
+</html>
